@@ -466,6 +466,72 @@ func Test_functionAppTarget_Initialize(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func Test_validateFunctionAppContainerConfig(t *testing.T) {
+	tests := []struct {
+		name          string
+		serviceConfig *ServiceConfig
+		errorContains string
+	}{
+		{
+			name: "CodeRemoteBuild",
+			serviceConfig: &ServiceConfig{
+				Language:    ServiceLanguageTypeScript,
+				RemoteBuild: new(true),
+			},
+		},
+		{
+			name: "DockerRemoteBuild",
+			serviceConfig: &ServiceConfig{
+				Language: ServiceLanguageTypeScript,
+				Docker: DockerProjectOptions{
+					Path:        "./Dockerfile",
+					RemoteBuild: true,
+				},
+			},
+		},
+		{
+			name: "PreBuiltImageWithoutLanguage",
+			serviceConfig: &ServiceConfig{
+				Image: osutil.NewExpandableString("registry.azurecr.io/function:latest"),
+			},
+		},
+		{
+			name: "PreBuiltImageWithDockerLanguage",
+			serviceConfig: &ServiceConfig{
+				Language: ServiceLanguageDocker,
+				Image:    osutil.NewExpandableString("registry.azurecr.io/function:latest"),
+			},
+		},
+		{
+			name: "PreBuiltImageWithSourceLanguage",
+			serviceConfig: &ServiceConfig{
+				Language: ServiceLanguageTypeScript,
+				Image:    osutil.NewExpandableString("registry.azurecr.io/function:latest"),
+			},
+			errorContains: "pre-built image deployments cannot use source language 'ts'",
+		},
+		{
+			name: "ContainerWithTopLevelRemoteBuild",
+			serviceConfig: &ServiceConfig{
+				Language:    ServiceLanguageDocker,
+				RemoteBuild: new(true),
+			},
+			errorContains: "top-level 'remoteBuild' is only supported for code-based function deployments",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateFunctionAppContainerConfig(tt.serviceConfig)
+			if tt.errorContains == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tt.errorContains)
+			}
+		})
+	}
+}
+
 func Test_functionAppTarget_Publish(t *testing.T) {
 	target := NewFunctionAppTarget(nil, nil, nil, nil, nil)
 	result, err := target.Publish(t.Context(), nil, nil, nil, nil, nil)

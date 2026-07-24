@@ -572,11 +572,40 @@
                             "anyOf": [
                                 {
                                     "required": ["image"],
-                                    "not": { "required": ["project"] }
+                                    "not": { "required": ["project"] },
+                                    "properties": {
+                                        "language": { "const": "docker" },
+                                        "remoteBuild": false
+                                    }
                                 },
                                 {
                                     "required": ["project"],
                                     "not": { "required": ["image"] }
+                                }
+                            ],
+                            "allOf": [
+                                {
+                                    "if": {
+                                        "anyOf": [
+                                            {
+                                                "required": ["language"],
+                                                "properties": {
+                                                    "language": { "const": "docker" }
+                                                }
+                                            },
+                                            {
+                                                "required": ["docker"],
+                                                "properties": {
+                                                    "docker": { "required": ["path"] }
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "then": {
+                                        "properties": {
+                                            "remoteBuild": false
+                                        }
+                                    }
                                 }
                             ],
                             "properties": {

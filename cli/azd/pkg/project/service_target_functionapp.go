@@ -138,9 +138,39 @@ func (f *functionAppTarget) RequiredExternalTools(ctx context.Context, serviceCo
 
 // Initializes the function app target
 func (f *functionAppTarget) Initialize(ctx context.Context, serviceConfig *ServiceConfig) error {
+	if err := validateFunctionAppContainerConfig(serviceConfig); err != nil {
+		return err
+	}
 	if isContainerDeploy(serviceConfig, nil) {
 		return f.containerTarget.Initialize(ctx, serviceConfig)
 	}
+	return nil
+}
+
+func validateFunctionAppContainerConfig(serviceConfig *ServiceConfig) error {
+	if serviceConfig == nil {
+		return nil
+	}
+
+	if !serviceConfig.Image.Empty() &&
+		serviceConfig.Language != ServiceLanguageNone &&
+		serviceConfig.Language != ServiceLanguageDocker {
+		return &internal.ErrorWithSuggestion{
+			Err: fmt.Errorf(
+				"pre-built image deployments cannot use source language '%s'",
+				serviceConfig.Language,
+			),
+			Suggestion: "Remove 'language' or set 'language: docker' when using 'image'.",
+		}
+	}
+
+	if isContainerDeploy(serviceConfig, nil) && serviceConfig.RemoteBuild != nil {
+		return &internal.ErrorWithSuggestion{
+			Err:        fmt.Errorf("top-level 'remoteBuild' is only supported for code-based function deployments"),
+			Suggestion: "Remove the top-level setting and use 'docker.remoteBuild' for container deployments.",
+		}
+	}
+
 	return nil
 }
 
